@@ -1,6 +1,21 @@
 version: "3.9"
 
 services:
+  pulse-postgres:
+    image: postgres:16-alpine
+    container_name: pulsegrid-pulse-postgres-local
+    environment:
+      POSTGRES_DB: pulsegrid_pulses
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5413:5432"
+    volumes:
+      - pulsegrid-pulse-db-local:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - pulsegrid-network
+
   pulse-service:
     build:
       context: ..
@@ -9,7 +24,12 @@ services:
     command: ["sh", "-c", "npm install && npm run start:dev"]
     environment:
       PORT: "4103"
-      STORAGE_DIR: "/app/storage"
+      DB_HOST: "pulse-postgres"
+      DB_PORT: "5432"
+      DB_DATABASE: "pulsegrid_pulses"
+      DB_USERNAME: "postgres"
+      DB_PASSWORD: "postgres"
+      DB_SYNCHRONIZE: "true"
       NODE_ENV: "development"
     ports:
       - "4103:4103"
@@ -17,8 +37,13 @@ services:
       - ../source:/app
       - /app/node_modules
     restart: unless-stopped
+    depends_on:
+      - pulse-postgres
     networks:
       - pulsegrid-network
+
+volumes:
+  pulsegrid-pulse-db-local:
 
 networks:
   pulsegrid-network:

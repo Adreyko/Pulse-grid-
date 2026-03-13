@@ -1,25 +1,51 @@
-import { mkdir, rm } from 'node:fs/promises';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
-import { JsonFileStore } from '../../shared/storage/json-file.store';
 import { PulseEntity } from './entities/pulse.entity';
 import { PulseRepository } from './pulse.repository';
 import { PulseService } from './pulse.service';
 
 describe('PulseService', () => {
-  const storageDir = join(tmpdir(), `pulsegrid-pulses-${Date.now()}`);
-  const storageFile = join(storageDir, 'pulses.json');
-
   let pulseService: PulseService;
+  let pulseRepository: jest.Mocked<PulseRepository>;
+  let inMemoryPulses: PulseEntity[];
 
-  beforeAll(async () => {
-    await mkdir(storageDir, { recursive: true });
-    const store = new JsonFileStore<PulseEntity[]>(storageFile, () => []);
-    pulseService = new PulseService(new PulseRepository(store));
-  });
+  beforeEach(() => {
+    inMemoryPulses = [];
+    pulseRepository = {
+      upsert: jest.fn(async input => {
+        const existingPulse = inMemoryPulses.find(
+          pulse =>
+            pulse.tenantId === input.tenantId &&
+            pulse.memberId === input.memberId &&
+            pulse.date === input.date,
+        );
 
-  afterAll(async () => {
-    await rm(storageDir, { recursive: true, force: true });
+        if (existingPulse) {
+          existingPulse.memberName = input.memberName;
+          existingPulse.mood = input.mood;
+          existingPulse.energy = input.energy;
+          existingPulse.wins = input.wins;
+          existingPulse.blockers = input.blockers;
+          existingPulse.focus = input.focus;
+          existingPulse.updatedAt = new Date();
+          return existingPulse;
+        }
+
+        const createdPulse = {
+          id: `pulse_${inMemoryPulses.length + 1}`,
+          ...input,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as PulseEntity;
+        inMemoryPulses.push(createdPulse);
+        return createdPulse;
+      }),
+      findByTenant: jest.fn(async tenantId => inMemoryPulses.filter(pulse => pulse.tenantId === tenantId)),
+      findByTenantAndMember: jest.fn(async (tenantId, memberId) =>
+        inMemoryPulses.filter(
+          pulse => pulse.tenantId === tenantId && pulse.memberId === memberId,
+        ),
+      ),
+    } as unknown as jest.Mocked<PulseRepository>;
+    pulseService = new PulseService(pulseRepository);
   });
 
   it('upserts the pulse for the same member and date', async () => {

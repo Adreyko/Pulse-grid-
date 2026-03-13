@@ -1,37 +1,18 @@
-import { mkdir, rm } from 'node:fs/promises';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
-import { JsonFileStore } from '../../shared/storage/json-file.store';
 import { TenantEntity } from './entities/tenant.entity';
 import { TenantRepository } from './tenant.repository';
 import { TenantService } from './tenant.service';
 
 describe('TenantService', () => {
-  const storageDir = join(tmpdir(), `pulsegrid-tenant-${Date.now()}`);
-  const storageFile = join(storageDir, 'tenants.json');
-
   let tenantService: TenantService;
+  let tenantRepository: jest.Mocked<TenantRepository>;
 
-  beforeAll(async () => {
-    await mkdir(storageDir, { recursive: true });
-    const timestamp = new Date().toISOString();
-    const store = new JsonFileStore<TenantEntity[]>(storageFile, () => [
-      {
-        id: 'tenant_northstar_studio',
-        name: 'Northstar Studio',
-        slug: 'northstar-studio',
-        timezone: 'Europe/Kiev',
-        status: 'active',
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      },
-    ]);
-
-    tenantService = new TenantService(new TenantRepository(store));
-  });
-
-  afterAll(async () => {
-    await rm(storageDir, { recursive: true, force: true });
+  beforeEach(() => {
+    tenantRepository = {
+      create: jest.fn(),
+      findBySlug: jest.fn(),
+      findById: jest.fn(),
+    } as unknown as jest.Mocked<TenantRepository>;
+    tenantService = new TenantService(tenantRepository);
   });
 
   it('normalizes a tenant slug', () => {
@@ -39,6 +20,16 @@ describe('TenantService', () => {
   });
 
   it('rejects duplicate slugs', async () => {
+    tenantRepository.findBySlug.mockResolvedValue({
+      id: 'tenant_northstar_studio',
+      name: 'Northstar Studio',
+      slug: 'northstar-studio',
+      timezone: 'Europe/Kiev',
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    } as TenantEntity);
+
     await expect(
       tenantService.createTenant({
         name: 'Northstar Studio',

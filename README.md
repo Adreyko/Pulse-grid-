@@ -8,10 +8,12 @@ The workspace mirrors the service-per-folder structure used in the existing proj
 
 - TypeScript
 - NestJS
+- TypeORM
+- PostgreSQL
 - class-validator and class-transformer for DTO validation
 - Nest JWT for tenant-aware access tokens
 - Docker Compose per service
-- JSON-backed repositories for local persistence with a clean seam for a future PostgreSQL adapter
+- repository-oriented module boundaries around the persistence layer
 
 ## Runtime
 
@@ -30,7 +32,13 @@ The workspace mirrors the service-per-folder structure used in the existing proj
 
 Requests enter through the gateway at `http://localhost:4000`. The gateway resolves the tenant from `x-tenant-slug`, validates the bearer token, enriches the request with trusted tenant and user headers, and forwards it to the target service.
 
-Each service owns its own storage and persists data to its own JSON store under `source/storage`. The current repositories are intentionally isolated behind Nest providers so they can be replaced by PostgreSQL or another durable backend without changing the HTTP contracts.
+Each domain service is now Postgres-first. `tenant-service`, `identity-service`, and `pulse-service` each own their own database schema and use TypeORM entities plus repository services. The gateway stays stateless and does not keep its own database.
+
+The storage split is:
+
+- `tenant-service` -> `pulsegrid_tenants`
+- `identity-service` -> `pulsegrid_identity`
+- `pulse-service` -> `pulsegrid_pulses`
 
 The service layout is:
 
@@ -70,6 +78,9 @@ The exposed ports are:
 - `4101` tenant-service
 - `4102` identity-service
 - `4103` pulse-service
+- `5411` tenant postgres
+- `5412` identity postgres
+- `5413` pulse postgres
 
 ## Test run
 
@@ -128,7 +139,8 @@ curl 'http://localhost:4000/api/v1/pulses/digest?date=2026-03-13' \
 - Protected routes require `Authorization: Bearer <token>` and `x-tenant-slug`
 - Admin-only routes: `POST /api/v1/auth/users`, `GET /api/v1/pulses/digest`
 - `docker-compose.local.yml.example` files run each service with bind mounts and `npm run start:dev`
-- `docker-compose.dev.yml` files build a portable Nest image per service
+- `docker-compose.dev.yml` files include a dedicated Postgres container for each domain service
+- `tenant-service` seeds the default tenant on bootstrap if it does not exist
+- `identity-service` seeds the default admin on bootstrap if it does not exist
 - `tenant-service` and `pulse-service` were verified locally with `npm test` and `npm run build`
 - `identity-service` and `api-gateway` were rewritten to the same Nest structure but not dependency-verified in this session because dependency installation for those two services was declined
-# Pulse-grid-

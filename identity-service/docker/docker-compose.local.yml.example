@@ -1,6 +1,21 @@
 version: "3.9"
 
 services:
+  identity-postgres:
+    image: postgres:16-alpine
+    container_name: pulsegrid-identity-postgres-local
+    environment:
+      POSTGRES_DB: pulsegrid_identity
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5412:5432"
+    volumes:
+      - pulsegrid-identity-db-local:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - pulsegrid-network
+
   identity-service:
     build:
       context: ..
@@ -9,7 +24,6 @@ services:
     command: ["sh", "-c", "npm install && npm run start:dev"]
     environment:
       PORT: "4102"
-      STORAGE_DIR: "/app/storage"
       INTERNAL_TOKEN: "pulsegrid-internal-token"
       JWT_SECRET: "pulsegrid-jwt-secret"
       TENANT_SERVICE_URL: "http://tenant-service:4101"
@@ -17,6 +31,12 @@ services:
       DEFAULT_ADMIN_NAME: "Northstar Owner"
       DEFAULT_ADMIN_EMAIL: "owner@northstar.local"
       DEFAULT_ADMIN_PASSWORD: "ChangeMe!123"
+      DB_HOST: "identity-postgres"
+      DB_PORT: "5432"
+      DB_DATABASE: "pulsegrid_identity"
+      DB_USERNAME: "postgres"
+      DB_PASSWORD: "postgres"
+      DB_SYNCHRONIZE: "true"
       NODE_ENV: "development"
     ports:
       - "4102:4102"
@@ -24,8 +44,13 @@ services:
       - ../source:/app
       - /app/node_modules
     restart: unless-stopped
+    depends_on:
+      - identity-postgres
     networks:
       - pulsegrid-network
+
+volumes:
+  pulsegrid-identity-db-local:
 
 networks:
   pulsegrid-network:

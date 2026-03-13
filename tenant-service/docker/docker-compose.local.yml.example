@@ -1,6 +1,21 @@
 version: "3.9"
 
 services:
+  tenant-postgres:
+    image: postgres:16-alpine
+    container_name: pulsegrid-tenant-postgres-local
+    environment:
+      POSTGRES_DB: pulsegrid_tenants
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5411:5432"
+    volumes:
+      - pulsegrid-tenant-db-local:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - pulsegrid-network
+
   tenant-service:
     build:
       context: ..
@@ -9,11 +24,16 @@ services:
     command: ["sh", "-c", "npm install && npm run start:dev"]
     environment:
       PORT: "4101"
-      STORAGE_DIR: "/app/storage"
       INTERNAL_TOKEN: "pulsegrid-internal-token"
       DEFAULT_TENANT_NAME: "Northstar Studio"
       DEFAULT_TENANT_SLUG: "northstar-studio"
       DEFAULT_TENANT_TIMEZONE: "Europe/Kiev"
+      DB_HOST: "tenant-postgres"
+      DB_PORT: "5432"
+      DB_DATABASE: "pulsegrid_tenants"
+      DB_USERNAME: "postgres"
+      DB_PASSWORD: "postgres"
+      DB_SYNCHRONIZE: "true"
       NODE_ENV: "development"
     ports:
       - "4101:4101"
@@ -21,8 +41,13 @@ services:
       - ../source:/app
       - /app/node_modules
     restart: unless-stopped
+    depends_on:
+      - tenant-postgres
     networks:
       - pulsegrid-network
+
+volumes:
+  pulsegrid-tenant-db-local:
 
 networks:
   pulsegrid-network:
