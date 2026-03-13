@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  api-gateway:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: pulsegrid-api-gateway
+    command: ["npm", "run", "start:prod"]
+    environment:
+      PORT: "4000"
+      CORS_ORIGIN: "*"
+      JWT_SECRET: "pulsegrid-jwt-secret"
+      INTERNAL_TOKEN: "pulsegrid-internal-token"
+      TENANT_SERVICE_URL: "http://tenant-service:4101"
+      IDENTITY_SERVICE_URL: "http://identity-service:4102"
+      PULSE_SERVICE_URL: "http://pulse-service:4103"
+      NODE_ENV: "production"
+    ports:
+      - "4000:4000"
+    restart: unless-stopped
+    networks:
+      - pulsegrid-network
+
+networks:
+  pulsegrid-network:
+    external: true
+    name: pulsegrid-network

@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  identity-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: pulsegrid-identity-service
+    command: ["npm", "run", "start:prod"]
+    environment:
+      PORT: "4102"
+      STORAGE_DIR: "/app/storage"
+      INTERNAL_TOKEN: "pulsegrid-internal-token"
+      JWT_SECRET: "pulsegrid-jwt-secret"
+      TENANT_SERVICE_URL: "http://tenant-service:4101"
+      DEFAULT_TENANT_ID: "tenant_northstar_studio"
+      DEFAULT_ADMIN_NAME: "Northstar Owner"
+      DEFAULT_ADMIN_EMAIL: "owner@northstar.local"
+      DEFAULT_ADMIN_PASSWORD: "ChangeMe!123"
+      NODE_ENV: "production"
+    ports:
+      - "4102:4102"
+    restart: unless-stopped
+    networks:
+      - pulsegrid-network
+
+networks:
+  pulsegrid-network:
+    external: true
+    name: pulsegrid-network

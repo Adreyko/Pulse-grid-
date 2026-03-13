@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  pulse-service:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: pulsegrid-pulse-service-local
+    command: ["sh", "-c", "npm install && npm run start:dev"]
+    environment:
+      PORT: "4103"
+      STORAGE_DIR: "/app/storage"
+      NODE_ENV: "development"
+    ports:
+      - "4103:4103"
+    volumes:
+      - ../source:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - pulsegrid-network
+
+networks:
+  pulsegrid-network:
+    external: true
+    name: pulsegrid-network
